@@ -3,11 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>コータポイント</title>
+<title>航太ポイント</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <meta name="theme-color" content="#7c4dff">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="コータポイント">
+<meta name="apple-mobile-web-app-title" content="航太ポイント">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -214,7 +214,7 @@ function homeView(){
   var c=bal-b;
   var pendingBonus=un.some(function(l){return l.kind==='bonus'});
   var np=nextPayday(), days=Math.round((np-parse(today()))/86400000);
-  var h='<section class="hero"><div class="hero-top"><span class="brand">✨ コータポイント</span><span class="pill">1pt = 1円</span></div>'+
+  var h='<section class="hero"><div class="hero-top"><span class="brand">✨ 航太ポイント</span><span class="pill">1pt = 1円</span></div>'+
     '<div class="label">いまのポイント</div><div class="bal" id="bal"><span>'+fmt(bal)+'</span><small>pt</small></div>'+
     '<div class="yen">お金にすると '+fmt(bal)+'円</div>'+
     '<div class="split"><span>🎁 月のお小遣い '+fmt(b)+'pt</span><span>🌟 お手伝い '+fmt(c)+'pt</span></div></section>';
