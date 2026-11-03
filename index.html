@@ -150,6 +150,7 @@ var today=function(){return ymd(new Date())};
 var fmt=function(n){return Number(n).toLocaleString('ja-JP')};
 var uid=function(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6)};
 var esc=function(s){return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})};
+var sg=function(n){return (n>0?'+':n<0?'−':'')+fmt(Math.abs(n))};
 var DOW=['日','月','火','水','木','金','土'];
 var BONUS=600;
 var mdLabel=function(s){var d=parse(s);return (d.getMonth()+1)+'/'+d.getDate()+'('+DOW[d.getDay()]+')'};
@@ -211,13 +212,14 @@ var toastTimer;
 function homeView(){
   var un=unsettled(), bal=balance();
   var b=un.filter(function(l){return l.kind==='bonus'}).reduce(function(a,l){return a+l.pts},0);
-  var c=bal-b;
+  var ad=un.filter(function(l){return l.kind==='adjust'}).reduce(function(a,l){return a+l.pts},0);
+  var c=bal-b-ad;
   var pendingBonus=un.some(function(l){return l.kind==='bonus'});
   var np=nextPayday(), days=Math.round((np-parse(today()))/86400000);
   var h='<section class="hero"><div class="hero-top"><span class="brand">✨ 航太ポイント</span><span class="pill">1pt = 1円</span></div>'+
     '<div class="label">いまのポイント</div><div class="bal" id="bal"><span>'+fmt(bal)+'</span><small>pt</small></div>'+
     '<div class="yen">お金にすると '+fmt(bal)+'円</div>'+
-    '<div class="split"><span>🎁 月のお小遣い '+fmt(b)+'pt</span><span>🌟 お手伝い '+fmt(c)+'pt</span></div></section>';
+    '<div class="split"><span>🎁 月のお小遣い '+fmt(b)+'pt</span><span>🌟 お手伝い '+fmt(c)+'pt</span>'+(ad?'<span>🔧 調整 '+sg(ad)+'pt</span>':'')+'</div></section>';
   if(pendingBonus){
     h+='<div class="banner hot"><div class="be">🎉</div><div><b>換金日です</b><span>'+fmt(bal)+'円をコータに渡したら、下のボタンを押してね。月曜の朝には自動で0になります。</span></div></div>';
   }else{
@@ -255,7 +257,7 @@ function calView(){
   h+='<div class="card"><div class="row"><div class="t"><b>'+mdLabel(ui.sel)+'</b></div><button class="btn ghost" data-act="recday">この日に記録</button></div>';
   if(!L.length)h+='<div class="empty-note">この日の記録はありません</div>';
   L.forEach(function(l){
-    h+='<div class="row"><span style="font-size:24px">'+esc(l.emoji)+'</span><div class="t">'+esc(l.name)+(l.mult>1?' ×'+l.mult:'')+'<small>'+(l.settled?'換金済み':'未換金')+'</small></div><span class="pts">+'+fmt(l.pts)+'pt</span><button class="x" data-act="del" data-id="'+l.id+'" aria-label="削除">✕</button></div>';
+    h+='<div class="row"><span style="font-size:24px">'+esc(l.emoji)+'</span><div class="t">'+esc(l.name)+(l.mult>1?' ×'+l.mult:'')+'<small>'+(l.settled?'換金済み':'未換金')+'</small></div><span class="pts">'+sg(l.pts)+'pt</span><button class="x" data-act="del" data-id="'+l.id+'" aria-label="削除">✕</button></div>';
   });
   return h+'</div>';
 }
@@ -266,7 +268,8 @@ function menuView(){
   state.settlements.slice().reverse().forEach(function(s){
     h+='<div class="row"><span style="font-size:24px">💴</span><div class="t">'+mdLabel(s.date)+'分<small>'+s.count+'件'+(s.auto?'・月曜に自動でリセット':'・ボタンで換金済み')+'</small></div><span class="pts">'+fmt(s.total)+'円</span></div>';
   });
-  h+='</div><h2>お手伝いの種類</h2><div class="card">';
+  h+='</div><h2>ポイント調整</h2><div class="card"><div class="note">いまのポイントを増やしたり減らしたりします。最初に、たまっているポイントを入れるときなどに使います。減らすときは、マイナスの数字を入れてください（例：-100）。</div><div class="daterow"><label for="adP">増減するポイント</label><input type="number" id="adP" inputmode="numeric" placeholder="例：300 / -100" style="width:140px"></div><div class="daterow"><label for="adN">メモ</label><input type="text" id="adN" placeholder="例：これまでのポイント" style="flex:1"></div><div class="daterow"><label for="adD">日付</label><input type="date" id="adD" value="'+today()+'" max="'+today()+'"></div><button class="btn" data-act="adjust">調整する</button><div class="note">間違えたときは、カレンダーのその日から記録を削除できます。</div></div>';
+  h+='<h2>お手伝いの種類</h2><div class="card">';
   state.items.forEach(function(it){
     h+='<div class="row"><span style="font-size:24px">'+esc(it.emoji)+'</span><div class="t">'+esc(it.name)+'<small>'+(it.unit?esc(it.unit)+'・':'')+fmt(it.pts)+'pt</small></div>'+(it.id==='massage'?'':'<button class="x" data-act="delitem" data-id="'+it.id+'" aria-label="削除">✕</button>')+'</div>';
   });
@@ -332,6 +335,11 @@ document.addEventListener('click',function(e){
   if(a==='delitem'){
     var it2=state.items.filter(function(x){return x.id===id})[0];
     ask('🗑️',esc(it2.name)+'を一覧から消しますか？<br>過去の記録は残ります。','消す',function(){state.items=state.items.filter(function(x){return x.id!==id});save();render()});return}
+  if(a==='adjust'){
+    var v=parseInt(document.getElementById('adP').value,10), nm=document.getElementById('adN').value.trim(), dd=document.getElementById('adD').value||today();
+    if(!v){toast('増減するポイントを入れてください');render();return}
+    state.logs.push({id:uid(),date:dd,kind:'adjust',name:nm||'ポイント調整',emoji:'🔧',mult:1,pts:v,settled:null});save();
+    toast('ポイントを '+sg(v)+'pt 調整しました（現在 '+fmt(balance())+'pt）');ui.tab='home';render();window.scrollTo(0,0);return}
   if(a==='file'){
     try{var bl=new Blob([JSON.stringify(state)],{type:'application/json'}),u=URL.createObjectURL(bl),an=document.createElement('a');
       an.href=u;an.download='kouta-point-'+today()+'.json';document.body.appendChild(an);an.click();an.remove();setTimeout(function(){URL.revokeObjectURL(u)},4000);
