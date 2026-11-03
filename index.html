@@ -271,7 +271,7 @@ function menuView(){
     h+='<div class="row"><span style="font-size:24px">'+esc(it.emoji)+'</span><div class="t">'+esc(it.name)+'<small>'+(it.unit?esc(it.unit)+'・':'')+fmt(it.pts)+'pt</small></div>'+(it.id==='massage'?'':'<button class="x" data-act="delitem" data-id="'+it.id+'" aria-label="削除">✕</button>')+'</div>';
   });
   h+='<div class="form"><input type="text" id="niE" placeholder="🧹" maxlength="4" aria-label="絵文字"><input type="text" id="niN" placeholder="名前（例：皿洗い）" aria-label="名前"><input type="number" id="niP" placeholder="pt" inputmode="numeric" min="1" aria-label="ポイント"></div><button class="btn" data-act="additem">お手伝いを追加</button></div>';
-  h+='<h2>バックアップ</h2><div class="card"><div class="note">データはこのスマホの中だけに保存されています。機種変更やブラウザの削除に備えて、ときどきコピーして保存しておくと安心です。</div><div class="two" style="display:flex;gap:8px"><button class="btn ghost" data-act="exp" style="flex:1">データをコピー</button><button class="btn ghost" data-act="imp" style="flex:1">貼り付けて復元</button></div><textarea id="bk" placeholder="ここにデータが表示されます。復元するときはここに貼り付けてください。">'+esc(ui.backup)+'</textarea></div>';
+  h+='<h2>バックアップ</h2><div class="card"><div class="note">データはこのスマホの中だけに保存されています。機種変更やブラウザの削除に備えて、ときどきコピーして保存しておくと安心です。</div><div class="two" style="display:flex;gap:8px"><button class="btn" data-act="file" style="flex:1">📁 ファイルに保存</button><button class="btn ghost" data-act="pick" style="flex:1">ファイルから復元</button><input type="file" id="bf" accept=".json,application/json" hidden></div><div class="two" style="display:flex;gap:8px"><button class="btn ghost" data-act="exp" style="flex:1">データをコピー</button><button class="btn ghost" data-act="imp" style="flex:1">貼り付けて復元</button></div><textarea id="bk" placeholder="ここにデータが表示されます。復元するときはここに貼り付けてください。">'+esc(ui.backup)+'</textarea></div>';
   return h;
 }
 
@@ -332,6 +332,13 @@ document.addEventListener('click',function(e){
   if(a==='delitem'){
     var it2=state.items.filter(function(x){return x.id===id})[0];
     ask('🗑️',esc(it2.name)+'を一覧から消しますか？<br>過去の記録は残ります。','消す',function(){state.items=state.items.filter(function(x){return x.id!==id});save();render()});return}
+  if(a==='file'){
+    try{var bl=new Blob([JSON.stringify(state)],{type:'application/json'}),u=URL.createObjectURL(bl),an=document.createElement('a');
+      an.href=u;an.download='kouta-point-'+today()+'.json';document.body.appendChild(an);an.click();an.remove();setTimeout(function(){URL.revokeObjectURL(u)},4000);
+      toast('ファイルに保存しました（ダウンロード/ファイルアプリ）');render();
+    }catch(err){toast('保存できませんでした。コピーを使ってください');render()}
+    return}
+  if(a==='pick'){document.getElementById('bf').click();return}
   if(a==='exp'){
     ui.backup=JSON.stringify(state);render();
     var ta=document.getElementById('bk');ta.select();
@@ -346,11 +353,16 @@ document.addEventListener('click',function(e){
 });
 document.addEventListener('change',function(e){
   if(e.target.id==='recDate'){ui.recDate=e.target.value||today()}
+  if(e.target.id==='bf'&&e.target.files[0]){
+    var fr=new FileReader();fr.onload=function(){try{var d=JSON.parse(fr.result);if(!d.logs||!d.items)throw 0;
+      ask('📥','今のデータを、このファイルのデータで置き換えますか？','復元する',function(){state=d;save();sync();toast('復元しました');render()})}catch(err){toast('ファイルの形式が正しくありません');render()}};
+    fr.readAsText(e.target.files[0]);return}
   if(e.target.id==='bk'){ui.backup=e.target.value}
 });
 document.addEventListener('visibilitychange',function(){if(!document.hidden){sync();render()}});
 
 state=load();sync();render();
+try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){}
 try{if('serviceWorker' in navigator&&location.protocol.indexOf('http')===0)navigator.serviceWorker.register('sw.js').catch(function(){})}catch(e){}
 })();
 </script>
